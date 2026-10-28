@@ -2,12 +2,19 @@
 a
 a.out
 *.o
-*.out
 pi
 MonteCarloThreaded
+montecarlo_mpi
+montecarlo_seq
+
+# Nota: NÃO ignore results/ nem slurm-*.out — são os tempos brutos exigidos na entrega.
 
 # macOS
 .DS_Store
+
+# Python
+__pycache__/
+*.pyc
 
 # Editores
 .vscode/

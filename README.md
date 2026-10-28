@@ -3,38 +3,90 @@
 Estimativa de π pelo método de Monte Carlo. Este repositório contém **apenas a versão
 sequencial**, que serve de base para o Trabalho 2 (T2): a implementação MPI mestre/escravo.
 
-> As versões paralelas anteriores (Threaded, OpenMP e um esboço de MPI) foram removidas do
-> working tree, mas continuam preservadas no histórico do git. Veja `CLAUDE.md` para as regras
-> de trabalho neste repositório.
+> As versões paralelas anteriores (Threaded, OpenMP e um esboço de MPI) e os gráficos de
+> resultados do repositório original foram removidos do working tree, mas continuam preservados
+> no histórico do git. Veja `CLAUDE.md` para as regras de trabalho neste repositório.
 
 ## Conteúdo
 
-### 1. Versão sequencial — estimativa de π por Monte Carlo (C++)
+### Versão sequencial (C++)
 
 Fontes em `Pi/Serial/`:
 
-- `MonteCarloPi.cpp` — uma única rodada com `INTERVAL` amostras, imprimindo a estimativa a cada iteração.
+- `MonteCarloPi.cpp` — uma rodada com `INTERVAL` amostras, imprimindo a estimativa a cada iteração.
 - `MonteCarloPi2.cpp` — varre vários tamanhos de entrada (`1e3` … `1e9`) e imprime a estimativa final de cada um.
 
-Compilar e executar:
+É a base que será adaptada para a referência sequencial (T1) do T2 — ver o contrato de interface abaixo.
+
+### Visualização (Python)
+
+`Pi/Matplotlib/plot.py` plota a convergência da estimativa de π ao longo das tentativas
+(pede o número de rodadas e mostra o gráfico com matplotlib).
+
+## Rodando no cluster (T2 — MPI mestre/escravo)
+
+Fluxo de trabalho: editar no notebook → `git push` → no cluster `git pull` → `make` →
+`sbatch` → trazer os resultados de volta com `rsync`.
+
+### 0. Contrato de interface do programa
+
+Os scripts de medição assumem esta interface (ajuste em `scripts/config.sh` se a sua for diferente):
+
+- MPI: `mpirun -np P ./montecarlo_mpi <N> <GRAN>`
+- Sequencial: `./montecarlo_seq <N>`
+
+E que **cada execução imprime duas linhas** (exigências do feedback do T1):
+
+- `CHECK=<grandeza verificável>` — ex.: pontos dentro do círculo; tem que bater sequencial × MPI.
+- `TIME=<segundos>` — no MPI, `MPI_Wtime()` no mestre, só da distribuição ao último resultado.
+
+### 1. Sincronizar o código no cluster
 
 ```bash
-g++ -O2 Pi/Serial/MonteCarloPi2.cpp -o montecarlo_pi
-./montecarlo_pi
+# no cluster, uma vez:
+git clone https://github.com/BernardoFioreze/monte-carlo-simulation-pi.git
+cd monte-carlo-simulation-pi
+# a cada mudança:
+git pull
 ```
 
-![demo](Pi/Graphs/Sequential%20-%20Iterations%20VS%20Pi.png)
-![demo](Pi/Graphs/Sequential%20-%20Iterations%20VS%20Time.png)
+Se o cluster não tiver internet de saída, envie por `rsync` pelo ProxyJump, do notebook:
 
-### 2. Visualização com matplotlib (Python)
+```bash
+rsync -avz --exclude '.git' --exclude 'results' ./ atlantica:~/monte-carlo-simulation-pi/
+```
 
-`Pi/Matplotlib/plot.py` plota a convergência da estimativa de π ao longo das tentativas.
+### 2. Compilar
 
-10000 iterações
-![demo](Pi/Graphs/10000.png)
+```bash
+make        # gera montecarlo_mpi e montecarlo_seq (ajuste MPI_SRC/SEQ_SRC no Makefile)
+```
 
-100000 iterações
-![demo](Pi/Graphs/100000.png)
+### 3. Rodar as medições (as 10 repetições são automáticas)
 
-100000 iterações (zoom)
-![demo](Pi/Graphs/100000-2.png)
+Sempre a partir da **raiz do repositório**:
+
+```bash
+sbatch scripts/sequential.sbatch      # T1 de referência (ajuste N_REF p/ 30–60 s)
+sbatch scripts/strong_scaling.sbatch  # escalabilidade forte (P = 2,4,8,16,32,64)
+sbatch scripts/weak_scaling.sbatch    # escalabilidade fraca (N cresce na proporção de P)
+sbatch scripts/granularity.sbatch     # granularidade/balanceamento (P = 32)
+```
+
+Os parâmetros (`N_REF`, `GRAN`, `PLIST`, `REPS`, `GRAN_LIST`) ficam em `scripts/config.sh`.
+Cada job cria `results/<tipo>/<timestamp>/` com uma saída por execução, além de `lscpu.txt`,
+`info.txt` e `resumo.txt`. Acompanhe a fila com `squeue -u $USER`.
+
+### 4. Resumir e trazer os resultados
+
+```bash
+python3 scripts/summarize.py results/forte/<timestamp>   # mediana/mín/máx + confere o CHECK
+```
+
+Do notebook, para trazer os brutos de volta:
+
+```bash
+rsync -avz atlantica:~/monte-carlo-simulation-pi/results/ ./results/
+```
+
+Guarde `results/` e os arquivos `slurm-*.out` no repositório: são os tempos brutos da entrega.

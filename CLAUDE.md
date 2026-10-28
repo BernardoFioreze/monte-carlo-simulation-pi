@@ -98,7 +98,10 @@ Estas foram as falhas mais comuns da turma; a partir do T2 os critérios são ap
 ```
 Pi/Serial/        MonteCarloPi.cpp, MonteCarloPi2.cpp   # base sequencial (C++)
 Pi/Matplotlib/    plot.py                               # visualização da convergência
-Pi/Graphs/        gráficos sequenciais / matplotlib
+Makefile                                                # compila montecarlo_seq e montecarlo_mpi
+scripts/          config.sh + sbatch (forte/fraca/gran/seq) + summarize.py
 ```
 
-O código MPI do T2 ainda vai ser escrito por mim.
+O código MPI do T2 ainda vai ser escrito por mim. Os gráficos antigos (resultados do
+repositório original) foram removidos; os gráficos do T2 serão gerados a partir das minhas
+próprias medições em `results/`.
