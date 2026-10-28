@@ -11,12 +11,10 @@ sequencial**, que serve de base para o Trabalho 2 (T2): a implementação MPI me
 
 ### Versão sequencial (C++)
 
-Fontes em `Pi/Serial/`:
-
-- `MonteCarloPi.cpp` — uma rodada com `INTERVAL` amostras, imprimindo a estimativa a cada iteração.
-- `MonteCarloPi2.cpp` — varre vários tamanhos de entrada (`1e3` … `1e9`) e imprime a estimativa final de cada um.
-
-É a base que será adaptada para a referência sequencial (T1) do T2 — ver o contrato de interface abaixo.
+`Pi/Serial/montecarlo_seq.cpp` — baseline de referência (T1) do T2. Recebe `<N>` (nº de amostras),
+usa um RNG xorshift inline, não faz I/O dentro do laço medido e imprime `CHECK=`/`TIME=`/`PI=`
+(ver o contrato de interface abaixo). As versões anteriores (`MonteCarloPi*.cpp`) foram removidas
+por não servirem como baseline honesto; continuam no histórico do git.
 
 ### Visualização (Python)
 

@@ -96,7 +96,7 @@ Estas foram as falhas mais comuns da turma; a partir do T2 os critérios são ap
 ## Estrutura atual
 
 ```
-Pi/Serial/        MonteCarloPi.cpp, MonteCarloPi2.cpp   # base sequencial (C++)
+Pi/Serial/        montecarlo_seq.cpp                    # baseline sequencial (T1) — xorshift, <N>, CHECK/TIME
 Pi/Matplotlib/    plot.py                               # visualização da convergência
 Makefile                                                # compila montecarlo_seq e montecarlo_mpi
 scripts/          config.sh + sbatch (forte/fraca/gran/seq) + summarize.py

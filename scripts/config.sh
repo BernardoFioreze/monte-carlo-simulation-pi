@@ -12,7 +12,9 @@ SEQ_BIN=${SEQ_BIN:-./montecarlo_seq}      # melhor versão sequencial (referênc
 
 # Entrada de referência: nº TOTAL de amostras (pontos de Monte Carlo).
 # Dimensione para o SEQUENCIAL ficar entre 30 e 60 s no nó do cluster.
-N_REF=${N_REF:-1000000000}
+# Base de cálculo: ~3 ns/amostra medido com o xorshift -> 30-60 s ~= 1e10 a 2e10 amostras.
+# CALIBRE no cluster (CPU diferente): rode o sequential.sbatch e ajuste até cair em 30-60 s.
+N_REF=${N_REF:-10000000000}
 
 # Granularidade padrão: amostras por tarefa (quantas unidades vão em cada mensagem).
 # nº de tarefas = N_REF / GRAN  -> deve ser bem maior que o nº de escravos.
