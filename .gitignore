@@ -1,0 +1,14 @@
+# Build artifacts / binários compilados
+a
+a.out
+*.o
+*.out
+pi
+MonteCarloThreaded
+
+# macOS
+.DS_Store
+
+# Editores
+.vscode/
+.idea/
