@@ -1,0 +1,7 @@
+Resumo de results/seq/20261029-092254
+
+config           n       mediana           mín           máx
+------------------------------------------------------------
+seq             10       54.4326       53.9204       54.4907
+
+CHECK: OK, único em todas as execuções = 4319713793

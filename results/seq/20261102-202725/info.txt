@@ -1,0 +1,2 @@
+SEQ_BIN=./montecarlo_seq  N_REF=5500000000  REPS=10
+host: atlantica04

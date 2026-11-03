@@ -1,0 +1,10 @@
+# Artefatos de compilação do LaTeX (o .tex é a fonte; o PDF é gerado no Overleaf/pdflatex)
+*.aux
+*.log
+*.out
+*.pdf
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+build.log

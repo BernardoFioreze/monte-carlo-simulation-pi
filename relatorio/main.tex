@@ -1,0 +1,195 @@
+% ---------------------------------------------------------------------------
+% Relatorio T2 - Estimativa de pi por Monte Carlo em MPI mestre/escravo.
+% Overleaf: crie um projeto em branco e cole este arquivo (ou arraste-o).
+% Limite: 2 paginas (inclui referencias).
+%
+% >>> TODO antes de entregar:
+%   1. Complete os integrantes do grupo em \author (e matriculas, se exigido).
+%   2. Ajuste a disciplina/professor em \thanks (ou remova).
+%   3. Compile (pdfLaTeX).
+% ---------------------------------------------------------------------------
+\documentclass[10pt,twocolumn,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage[margin=1.6cm]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage[hidelinks]{hyperref}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\columnsep}{0.7cm}
+\pagestyle{empty}
+
+\title{\vspace{-1.2em}Estimativa de $\pi$ por Monte Carlo em MPI mestre/escravo:\\
+escalabilidade forte, fraca e granularidade\thanks{Processamento Paralelo e Distribuído. % TODO: ajuste disciplina/professor
+Cluster Atlântica (LAD).}}
+\author{Bernardo Fioreze % TODO: \and Fulano de Tal \and Ciclano ...
+\\ \texttt{bernardofioreze@gmail.com}}
+\date{\footnotesize Repositório: \url{https://github.com/BernardoFioreze/monte-carlo-simulation-pi}}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\section{Problema e modelo}
+Estimamos $\pi$ pela razão de pontos sorteados dentro do quarto de círculo
+unitário ($\pi \approx 4\,m/N$, com $m$ pontos dentro de $N$ amostras). A versão
+paralela segue o modelo \textbf{mestre/escravo} (saco de tarefas) em C+MPI: o saco
+tem $\lceil N/G\rceil$ tarefas de $G$ amostras cada (granularidade $G$ lida da linha
+de comando). A \emph{iniciativa é do escravo} --- cada resultado devolvido já conta
+como pedido da próxima tarefa; o mestre (rank~0) recebe por ordem de chegada com
+\texttt{MPI\_ANY\_SOURCE}, grava cada resultado na sua posição de origem (mantendo a
+ordem) e encerra cada escravo com uma \emph{tag} distinta quando o saco esvazia.
+Funciona para qualquer $P\ge 2$ e qualquer número de tarefas.
+
+\section{Metodologia de medição}
+\textbf{Ambiente.} Nós \texttt{atlantica} com Intel Xeon E5520 @ 2,27\,GHz
+(2~sockets $\times$ 4 núcleos $\times$ 2 \emph{threads} = 8 núcleos físicos / 16
+\emph{threads} lógicas por nó). Alocamos \textbf{4 nós exclusivos} ($=32$ núcleos
+físicos, 64 \emph{threads} lógicas): assim $P\le 32$ usa 1 processo por núcleo físico
+e $P=64$ usa \emph{Hyper-Threading} (\texttt{mpirun -{}-use-hwthread-cpus -{}-map-by core}).
+
+\textbf{Protocolo.} 10 repetições por configuração; reportamos
+\emph{mediana, mínimo e máximo}. A região medida usa \texttt{MPI\_Wtime()} no mestre,
+do início da distribuição ao último resultado (sem geração/leitura da entrada). O
+sequencial (referência T1, mesma RNG \emph{xorshift} e \texttt{-O2}) mede só o laço
+de amostragem. Entrada calibrada em $N=5{,}5\times10^{9}$ para o sequencial cair em
+$30$--$60$\,s (mediana 54,42\,s; mín/máx 53,26/54,47\,s).
+
+\textbf{Equivalência.} O \texttt{CHECK} (total de pontos dentro do círculo) é uma
+soma de inteiros: para $(N,G)$ fixos ele é \textbf{idêntico para qualquer $P$}
+(4\,319\,715\,214 em toda a escala forte), provando a corretude do paralelismo.
+Como cada tarefa usa semente determinística própria, o fluxo difere do sequencial;
+a equivalência com este é por tolerância em $\pi$: $|\pi_\text{MPI}-\pi_\text{seq}|
+\approx 10^{-6}$, abaixo do erro estatístico $\sim 1/\sqrt{N}\approx 1{,}3\times10^{-5}$.
+
+\section{Resultados}
+
+\subsection{Escalabilidade forte ($N$ fixo, $G=10^6$)}
+Como o mestre não calcula, a aceleração é referida aos $P{-}1$ escravos
+(Tab.~\ref{tab:forte}, Fig.~\ref{fig:scaling}a). A eficiência é quase ideal
+\emph{dentro de um nó} ($\sim0{,}95$ até $P=8$, pois 8 processos cabem nos 8 núcleos
+de um nó) e \textbf{cai em $P=16$} (0,66), quando o cálculo cruza para um segundo nó
+e cada mensagem mestre$\leftrightarrow$escravo passa a pagar latência de rede.
+
+\begin{table}[t]\centering\footnotesize
+\caption{Escala forte. Mediana de 10 reps; \emph{speedup} e eficiência sobre o
+sequencial (54,42\,s), por escravo ($P{-}1$).}\label{tab:forte}
+\begin{tabular}{rrrrr}
+\toprule
+$P$ & mediana (s) & escravos & speedup & efic. \\
+\midrule
+2  & 54,75 & 1  & 0,99 & 0,99 \\
+4  & 19,20 & 3  & 2,83 & 0,94 \\
+8  &  8,21 & 7  & 6,63 & 0,95 \\
+16 &  5,52 & 15 & 9,85 & 0,66 \\
+32 &  2,84 & 31 & 19,2 & 0,62 \\
+64 &  1,75 & 63 & 31,1 & 0,49 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Escalabilidade fraca (trabalho por escravo constante)}
+No mestre/escravo só $P{-}1$ processos calculam, então crescemos $N\propto(P{-}1)$
+(e não $\propto P$) para manter o trabalho por escravo fixo em $\approx 5{,}5\times10^{9}$
+amostras. A \emph{medida de trabalho} é determinística: o nº de tarefas é
+exatamente $5500\,(P{-}1)$; o \texttt{CHECK} acompanha $\propto(P{-}1)$ dentro do
+ruído estatístico. O tempo ideal é constante. A curva (Tab.~\ref{tab:fraca},
+Fig.~\ref{fig:scaling}b) fica \textbf{plana em $\sim$57\,s até $P=8$}
+(um nó), dá um \textbf{degrau para $\sim$83\,s em $P=16$} (cruza nós) e
+estabiliza --- o \emph{mesmo} efeito de fronteira de nó da escala forte. Nenhuma
+eficiência excede~1.
+
+\begin{table}[t]\centering\footnotesize
+\caption{Escala fraca. $N_P=5{,}5\times10^{9}(P{-}1)$, $G=10^6$. Eficiência
+$=T(P{=}2)/T(P)$.}\label{tab:fraca}
+\begin{tabular}{rrrr}
+\toprule
+$P$ & mediana (s) & tarefas & efic. \\
+\midrule
+2  & 54,52 & 5\,500   & 1,00 \\
+4  & 57,58 & 16\,500  & 0,95 \\
+8  & 57,52 & 38\,500  & 0,95 \\
+16 & 82,76 & 82\,500  & 0,66 \\
+32 & 83,26 & 170\,500 & 0,65 \\
+64 & 84,52 & 346\,500 & 0,65 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure*}[t]\centering
+\begin{tikzpicture}
+\begin{axis}[width=0.45\textwidth,height=4.6cm,font=\small,
+  xlabel={escravos ($P{-}1$)},ylabel={speedup},grid=both,
+  legend pos=north west,legend style={font=\footnotesize},
+  title={\footnotesize (a) Forte: speedup}]
+\addplot[dashed,domain=1:63]{x};
+\addplot[mark=*,thick] coordinates {(1,0.99)(3,2.83)(7,6.63)(15,9.85)(31,19.18)(63,31.05)};
+\legend{ideal,medido}
+\end{axis}
+\end{tikzpicture}\hfill
+\begin{tikzpicture}
+\begin{axis}[width=0.45\textwidth,height=4.6cm,font=\small,
+  xlabel={$P$},ylabel={tempo (s)},xmode=log,log basis x=2,grid=both,
+  legend pos=north west,legend style={font=\footnotesize},
+  title={\footnotesize (b) Fraca: tempo}]
+\addplot[dashed] coordinates {(2,54.52)(64,54.52)};
+\addplot[mark=*,thick] coordinates {(2,54.52)(4,57.58)(8,57.52)(16,82.76)(32,83.26)(64,84.52)};
+\legend{ideal,medido}
+\end{axis}
+\end{tikzpicture}
+\caption{Escalabilidade. (a) o \emph{speedup} descola do ideal a partir de $P{=}16$;
+(b) o tempo da escala fraca é plano dentro de um nó e sobe um degrau ao cruzar nós.}
+\label{fig:scaling}
+\end{figure*}
+
+\subsection{Granularidade e balanceamento ($P=32$)}
+Variando $G$ com $P=32$ (Tab.~\ref{tab:gran}) surge o U clássico: $G$ pequeno
+(550\,000 tarefas) satura o mestre de mensagens minúsculas; $G$ grande
+(55 tarefas para 31 escravos) causa desbalanceamento (escravos ociosos no
+fim). O ótimo é $G=10^6$. \textbf{Consistência entre tabelas}: esse ponto
+(2,85\,s) coincide com a forte em $P=32$ (2,84\,s).
+
+\begin{table}[t]\centering\footnotesize
+\caption{Granularidade, $P=32$, $N=5{,}5\times10^{9}$.}\label{tab:gran}
+\begin{tabular}{rrrl}
+\toprule
+$G$ & mediana (s) & tarefas & regime \\
+\midrule
+$10^4$ & 5,23 & 550\,000 & comunicação \\
+$10^6$ & 2,85 & 5\,500   & ótimo \\
+$10^8$ & 3,90 & 55       & desbalanceamento \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Discussão: previsão do gargalo}
+O custo de uma tarefa é $t_\text{tar}\approx G\cdot t_\text{am}$, com
+$t_\text{am}=54{,}42\,\text{s}/5{,}5\times10^{9}\approx 9{,}9\,\text{ns}$, logo
+$t_\text{tar}(G{=}10^6)\approx 9{,}9\,\text{ms}$. O mestre satura quando o nº de
+escravos excede $t_\text{tar}/t_\text{msg}$. Como o tempo da forte \emph{ainda cai}
+de $P=32$ para $P=64$, o mestre \textbf{não saturou} até 63 escravos, o que impõe
+$t_\text{msg}\lesssim t_\text{tar}/63\approx 160\,\mu\text{s}$ --- coerente com
+latência de rede. A medição direta de $t_\text{msg}$ (ping-pong) fecharia a previsão
+quantitativamente. Todos os três experimentos apontam a \emph{mesma} causa: a
+comunicação mestre$\leftrightarrow$escravo ao cruzar a fronteira de nó, e não a
+computação, é o limite de escalabilidade.
+
+\section{Conclusão}
+O modelo mestre/escravo escala de forma quase ideal dentro de um nó e é limitado
+pela comunicação ao usar múltiplos nós. A escala fraca redefinida como
+$N\propto(P{-}1)$ elimina o artefato do processo coordenador e produz eficiência
+$\le 1$; a granularidade ótima ($G=10^6$) equilibra comunicação e balanceamento. A
+corretude é comprovada pelo \texttt{CHECK} invariante em $P$.
+
+\begin{thebibliography}{9}\footnotesize
+\bibitem{mpi} MPI Forum. \emph{MPI: A Message-Passing Interface Standard}, v4.1, 2023.
+\bibitem{repo} Repositório do trabalho (fontes, scripts \texttt{sbatch}, saídas brutas
+e este relatório): \url{https://github.com/BernardoFioreze/monte-carlo-simulation-pi}.
+\end{thebibliography}
+
+\end{document}

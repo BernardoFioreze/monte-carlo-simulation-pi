@@ -1,0 +1,3 @@
+MPI_BIN=./montecarlo_mpi  N_REF=5500000000  GRAN=1000000  REPS=10
+PLIST=2 4 8 16 32 64
+nós: atlantica[03-06]
