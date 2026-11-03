@@ -24,7 +24,7 @@ GRAN=${GRAN:-1000000}
 REPS=${REPS:-10}
 
 # Série de processos MPI (inclui o processo 0 = mestre).
-# 2,4,8,16,32 = até 1 por núcleo físico (2 nós x 16); 64 = com Hyper-Threading.
+# 2,4,8,16,32 = até 1 por núcleo físico (4 nós E5520 x 8 = 32); 64 = com Hyper-Threading.
 PLIST=${PLIST:-"2 4 8 16 32 64"}
 
 # Estudo de granularidade (P fixo = 32): uma bem menor, a escolhida, uma bem maior.

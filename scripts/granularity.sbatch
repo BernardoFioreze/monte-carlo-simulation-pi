@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Estudo de GRANULARIDADE e balanceamento (P fixo = 32).
 # Compara a granularidade escolhida com uma bem menor e uma bem maior (GRAN_LIST).
-# Submeta da RAIZ:  sbatch scripts/granularity.sbatch
+# 4 nós (como na forte/fraca) => P=32 = 1 processo por núcleo físico, para o ponto
+# GRAN=1e6 bater com a forte P=32. Submeta da RAIZ:  sbatch scripts/granularity.sbatch
 #SBATCH --job-name=mc_gran
-#SBATCH --nodes=2
+#SBATCH --nodes=4
 #SBATCH --exclusive
 #SBATCH --time=02:00:00
 #SBATCH --output=slurm-%x-%j.out
@@ -21,7 +22,7 @@ for G in $GRAN_LIST; do
   for r in $(seq 1 "$REPS"); do
     out="$OUTDIR/gran${G}_rep${r}.out"
     echo "[gran] G=$G rep=$r -> $out"
-    mpirun -np "$P" "$MPI_BIN" "$N_REF" "$G" > "$out" 2>&1
+    mpirun --use-hwthread-cpus --map-by core -np "$P" "$MPI_BIN" "$N_REF" "$G" > "$out" 2>&1
   done
 done
 
