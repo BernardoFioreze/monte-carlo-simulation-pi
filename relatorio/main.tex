@@ -55,9 +55,13 @@ e $P=64$ usa \emph{Hyper-Threading} (\texttt{mpirun -{}-use-hwthread-cpus -{}-ma
 
 \textbf{Protocolo.} 10 repetições por configuração; reportamos
 \emph{mediana, mínimo e máximo}. A região medida usa \texttt{MPI\_Wtime()} no mestre,
-do início da distribuição ao último resultado (sem geração/leitura da entrada). O
-sequencial (referência T1, mesma RNG \emph{xorshift} e \texttt{-O2}) mede só o laço
-de amostragem. Entrada calibrada em $N=5{,}5\times10^{9}$ para o sequencial cair em
+do início da distribuição ao último resultado (sem geração/leitura da entrada). A
+referência sequencial (T1) foi \emph{saneada} antes de virar \emph{baseline}:
+removemos o I/O por iteração da versão original (que a deixava $\sim$200$\times$ mais
+lenta) e trocamos \texttt{rand()} pela mesma RNG \emph{xorshift64} dos escravos
+($\sim$3\,ns/amostra); ela mede só o laço de amostragem, com as mesmas flags
+(\texttt{-O2}) do MPI --- sem isso o \emph{speedup} seria medido contra uma baseline
+artificialmente lenta. Entrada calibrada em $N=5{,}5\times10^{9}$ para o sequencial cair em
 $30$--$60$\,s (mediana 54,42\,s; mín/máx 53,26/54,47\,s).
 
 \textbf{Equivalência.} O \texttt{CHECK} (total de pontos dentro do círculo) é uma
@@ -101,12 +105,14 @@ exatamente $5500\,(P{-}1)$; o \texttt{CHECK} acompanha $\propto(P{-}1)$ dentro d
 ruído estatístico. O tempo ideal é constante. A curva (Tab.~\ref{tab:fraca},
 Fig.~\ref{fig:scaling}b) fica \textbf{plana em $\sim$57\,s até $P=8$}
 (um nó), dá um \textbf{degrau para $\sim$83\,s em $P=16$} (cruza nós) e
-estabiliza --- o \emph{mesmo} efeito de fronteira de nó da escala forte. Nenhuma
-eficiência excede~1.
+estabiliza --- o \emph{mesmo} efeito de fronteira de nó da escala forte. Como a
+eficiência é medida \emph{por escravo} (vazão por escravo, ideal~1), nenhum valor
+excede~1.
 
 \begin{table}[t]\centering\footnotesize
 \caption{Escala fraca. $N_P=5{,}5\times10^{9}(P{-}1)$, $G=10^6$. Eficiência
-$=T(P{=}2)/T(P)$.}\label{tab:fraca}
+\emph{por escravo}: vazão por escravo $N_P/[(P{-}1)T]$ normalizada pela de $P{=}2$,
+que equivale a $T(2)/T(P)$ (trabalho por escravo constante $\Rightarrow$ ideal~1).}\label{tab:fraca}
 \begin{tabular}{rrrr}
 \toprule
 $P$ & mediana (s) & tarefas & efic. \\
@@ -183,7 +189,7 @@ computação, é o limite de escalabilidade.
 O modelo mestre/escravo escala de forma quase ideal dentro de um nó e é limitado
 pela comunicação ao usar múltiplos nós. A escala fraca redefinida como
 $N\propto(P{-}1)$ elimina o artefato do processo coordenador e produz eficiência
-$\le 1$; a granularidade ótima ($G=10^6$) equilibra comunicação e balanceamento. A
+\emph{por escravo} $\le 1$; a granularidade ótima ($G=10^6$) equilibra comunicação e balanceamento. A
 corretude é comprovada pelo \texttt{CHECK} invariante em $P$.
 
 \section{Uso de inteligência artificial}
